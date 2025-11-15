@@ -11,10 +11,10 @@ interface Movie {
   downloadUrl: string;
 }
 
-function HtmlResponse(body: string, title = "My Movie App"): Response {
+function HtmlResponse(body: string, title = "Movie App"): Response {
   return new Response(
     `<!DOCTYPE html>
-    <html lang="my">
+    <html lang="en">
     <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -25,10 +25,9 @@ function HtmlResponse(body: string, title = "My Movie App"): Response {
         a { color: #007bff; text-decoration: none; }
         .movie-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
         .movie-card img { width: 100%; border-radius: 8px; }
-        .movie-card h3 { margin: 8px 0; font-size: 1rem; }
+        .movie-card h3 { margin: 8px 0; font-size: 1rem; text-align: center; }
         input, textarea, button { width: 100%; padding: 12px; margin-bottom: 1rem; border-radius: 4px; border: 1px solid #ccc; box-sizing: border-box; }
         button { background-color: #007bff; color: white; cursor: pointer; border: none; font-size: 1rem; }
-        button.danger { background-color: #dc3545; }
         .admin-nav { background-color: #343a40; padding: 1rem; text-align: center; }
         .admin-nav a { color: white; margin: 0 15px; }
       </style>
@@ -52,23 +51,23 @@ Deno.serve(async (req: Request) => {
     for await (const entry of entries) {
       movies.push(entry.value);
     }
-    movies = movies.reverse();
+    movies.reverse();
 
     const body = `
       <div class="container">
-        <h1>ဇာတ်ကားများ</h1>
+        <h1>Movies</h1>
         <div class="movie-grid">
           ${movies.map(movie => `
             <a href="/movie/${movie.id}" class="movie-card">
               <img src="${movie.poster}" alt="${movie.title}" />
               <h3>${movie.title}</h3>
             </a>
-          `).join('') || '<p>ဇာတ်ကားများ မထည့်သွင်းရသေးပါ။</p>'}
+          `).join('') || '<p>No movies have been added yet.</p>'}
         </div>
-        <p style="text-align:center; margin-top:2rem;"><a href="/admin">Admin Panel သို့သွားရန်</a></p>
+        <p style="text-align:center; margin-top:2rem;"><a href="/admin">Go to Admin Panel</a></p>
       </div>
     `;
-    return HtmlResponse(body, "ဇာတ်ကားများ");
+    return HtmlResponse(body, "All Movies");
   }
 
   const movieDetailPattern = new URLPattern({ pathname: "/movie/:id" });
@@ -83,7 +82,7 @@ Deno.serve(async (req: Request) => {
       <div class="container">
         <h1>${movie.title}</h1>
         <img src="${movie.poster}" alt="${movie.title}" style="max-width:250px; border-radius:8px;" />
-        <h2>သုံးသပ်ချက်</h2>
+        <h2>Review</h2>
         <p>${movie.review}</p>
         <h2>Screenshots</h2>
         <div style="display:flex; flex-wrap:wrap; gap:10px;">
@@ -92,7 +91,7 @@ Deno.serve(async (req: Request) => {
         <div style="margin-top:2rem;">
           <a href="${movie.downloadUrl}" style="padding:10px 15px; background:blue; color:white; border-radius:5px;">Download</a>
         </div>
-        <p style="margin-top: 2rem;"><a href="/"> &laquo; ပင်မစာမျက်နှာသို့</a></p>
+        <p style="margin-top: 2rem;"><a href="/"> &laquo; Back to Home</a></p>
       </div>
     `;
     return HtmlResponse(body, movie.title);
@@ -104,8 +103,8 @@ Deno.serve(async (req: Request) => {
   const adminNav = `
     <div class="admin-nav">
       <a href="/admin">Dashboard</a>
-      <a href="/admin/add">အသစ်ထည့်ရန်</a>
-      <a href="/logout">ထွက်ရန်</a>
+      <a href="/admin/add">Add New</a>
+      <a href="/logout">Logout</a>
     </div>`;
 
   if (pathname === "/admin/login") {
@@ -144,25 +143,26 @@ Deno.serve(async (req: Request) => {
   }
 
   if (pathname === "/admin") {
+      if (method !== "GET") return new Response("Method Not Allowed", { status: 405 });
       let movies: Movie[] = [];
       const entries = kv.list<Movie>({ prefix: ["movies"] });
       for await (const entry of entries) { movies.push(entry.value); }
-      movies = movies.reverse();
+      movies.reverse();
       
       const body = `
         ${adminNav}
         <div class="container">
-            <h2>ဇာတ်ကား စာရင်း</h2>
+            <h2>Movie List</h2>
             ${movies.map(m => `
                 <div style="display:flex; justify-content:space-between; align-items:center; padding:10px; border-bottom:1px solid #eee;">
                     <span>${m.title}</span>
                     <div>
-                        <a href="/admin/edit/${m.id}">ပြင်ရန်</a> |
-                        <form method="POST" action="/admin/delete/${m.id}" style="display:inline;" onsubmit="return confirm('ဤဇာတ်ကားကို ဖျက်မှာသေချာလား?');">
-                            <button type="submit" style="all:unset; color:red; cursor:pointer; padding-left: 5px;">ဖျက်ရန်</button>
+                        <a href="/admin/edit/${m.id}">Edit</a> |
+                        <form method="POST" action="/admin/delete/${m.id}" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete this?');">
+                            <button type="submit" style="all:unset; color:red; cursor:pointer; padding-left: 5px;">Delete</button>
                         </form>
                     </div>
-                </div>`).join('') || "<p>ဇာတ်ကားများ မရှိသေးပါ။</p>"}
+                </div>`).join('') || "<p>No movies yet.</p>"}
         </div>`;
       return HtmlResponse(body, "Admin Dashboard");
   }
@@ -172,17 +172,17 @@ Deno.serve(async (req: Request) => {
         const body = `
             ${adminNav}
             <div class="container">
-                <h2>ဇာတ်ကားအသစ်ထည့်ရန်</h2>
+                <h2>Add New Movie</h2>
                 <form method="POST">
-                  <input type="text" name="title" placeholder="ဇာတ်ကားအမည်" required />
-                  <input type="url" name="poster" placeholder="ပိုစတာပုံ URL" required />
-                  <textarea name="review" placeholder="အညွှန်း" required rows="4"></textarea>
-                  <textarea name="screenshots" placeholder="Screenshot URLs (ကော်မာခြားပြီးထည့်ပါ)" rows="3"></textarea>
+                  <input type="text" name="title" placeholder="Movie Title" required />
+                  <input type="url" name="poster" placeholder="Poster URL" required />
+                  <textarea name="review" placeholder="Review" required rows="4"></textarea>
+                  <textarea name="screenshots" placeholder="Screenshot URLs (comma-separated)" rows="3"></textarea>
                   <input type="url" name="downloadUrl" placeholder="Download URL" required />
-                  <button type="submit">သိမ်းဆည်းမည်</button>
+                  <button type="submit">Save Movie</button>
                 </form>
             </div>`;
-        return HtmlResponse(body, "ဇာတ်ကားအသစ်ထည့်ရန်");
+        return HtmlResponse(body, "Add New Movie");
     }
     if (method === "POST") {
         const form = await req.formData();
@@ -208,17 +208,17 @@ Deno.serve(async (req: Request) => {
           const body = `
               ${adminNav}
               <div class="container">
-                  <h2>"${movie.title}" ကို ပြင်ဆင်ရန်</h2>
+                  <h2>Edit: ${movie.title}</h2>
                   <form method="POST">
                       <input type="text" name="title" value="${movie.title}" required />
                       <input type="url" name="poster" value="${movie.poster}" required />
                       <textarea name="review" required rows="4">${movie.review}</textarea>
                       <textarea name="screenshots" rows="3">${movie.screenshots.join(', ')}</textarea>
                       <input type="url" name="downloadUrl" value="${movie.downloadUrl}" required />
-                      <button type="submit">အသစ်ပြင်ဆင်မည်</button>
+                      <button type="submit">Update Movie</button>
                   </form>
               </div>`;
-          return HtmlResponse(body, `ပြင်ဆင်ရန်: ${movie.title}`);
+          return HtmlResponse(body, `Edit: ${movie.title}`);
       }
       if (method === "POST") {
           const form = await req.formData();
@@ -234,18 +234,6 @@ Deno.serve(async (req: Request) => {
           return new Response(null, { status: 303, headers: { location: "/admin" } });
       }
   }
-
-  const deletePattern = new URLPattern({ pathname: "/admin/delete/:id" });
-  if (deletePattern.test(url) && method === "POST") {
-      const { id } = deletePattern.exec(url)!.pathname.groups;
-      await kv.delete(["movies", id!]);
-      return new Response(null, { status: 303, headers: { location: "/admin" } });
-  }
-
-  return new Response("404: Page not found", { status: 404 });
-});
-
-```}
 
   const deletePattern = new URLPattern({ pathname: "/admin/delete/:id" });
   if (deletePattern.test(url) && method === "POST") {
